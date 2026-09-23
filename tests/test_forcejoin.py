@@ -97,14 +97,29 @@ class TestEnsureJoined:
         assert ok is False
         assert len(urls) > 0
 
-    async def test_api_error_fail_open(self) -> None:
+    async def test_api_error_double_check_still_fails_denies(self) -> None:
+        """API error -> immediate retry (double-check); still failing = DENY."""
         _clear_join_cache()
         settings = _fresh_settings(force_join_chats=["@mychat"])
         bot = _mock_bot()
         bot.get_chat_member = AsyncMock(side_effect=Exception("Telegram API error"))
         with patch("app.forcejoin.settings", settings):
             ok, urls = await ensure_joined(bot, 99)
-        assert ok is True  # fail-open on API errors
+        assert bot.get_chat_member.await_count == 2  # double-checked
+        assert ok is False  # fail-closed: unverified = no access
+        assert len(urls) > 0
+
+    async def test_api_error_double_check_recovers(self) -> None:
+        """Transient error on first attempt, success on the double-check."""
+        _clear_join_cache()
+        settings = _fresh_settings(force_join_chats=["@mychat"])
+        bot = _mock_bot()
+        bot.get_chat_member = AsyncMock(
+            side_effect=[Exception("flaky"), MagicMock(status="member")]
+        )
+        with patch("app.forcejoin.settings", settings):
+            ok, urls = await ensure_joined(bot, 99)
+        assert ok is True
         assert urls == []
 
     async def test_multiple_chats_all_member(self) -> None:

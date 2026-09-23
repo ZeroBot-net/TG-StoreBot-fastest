@@ -56,7 +56,7 @@ async def _handle_start(message: Message) -> None:
         log_latency(code, t0, user_id, success=False)
         return
 
-    # --- Force-join gate (admins bypass, API errors fail open) -------------
+    # --- Force-join gate: no verified join, no access (double-checked) -----
     bot = message.bot
     ok, urls = await ensure_joined(bot, user_id)
     if not ok:

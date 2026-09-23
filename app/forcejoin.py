@@ -1,7 +1,8 @@
-"""Force channel-join gate with user + admin bypass."""
+"""Force channel-join gate — no join, no access. Failures are double-checked."""
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
@@ -15,12 +16,30 @@ from app.deliver import deliver_file
 logger = logging.getLogger(__name__)
 
 # Cache: (user_id, chat) -> (joined_ok, monotonic_expiry)
+# POSITIVE results only — a negative must always be re-checked (double check).
 _join_cache: dict[tuple[int, str], tuple[bool, float]] = {}
 _CACHE_TTL = 300.0
+_RETRY_DELAY_S = 0.3
+
+
+async def _check_member(bot: Bot, chat: str, user_id: int) -> bool | None:
+    """Single membership check. Returns True/False, or None on API error."""
+    try:
+        member = await bot.get_chat_member(chat_id=chat, user_id=user_id)
+        return member.status not in ("left", "kicked")
+    except Exception:
+        return None
 
 
 async def ensure_joined(bot: Bot, user_id: int) -> tuple[bool, list[str]]:
     """Check whether *user_id* has joined every ``force_join_chats`` entry.
+
+    Strict policy — **no verified join, no access**:
+    - admins bypass (they manage the channels),
+    - positive results are cached for 5 min,
+    - an API error triggers an immediate **double-check** (second attempt);
+      if that also fails the user is DENIED (fail-closed) with the join
+      links + retry button — never delivered on an unverified check.
 
     Returns ``(all_joined, list_of_join_urls)``.
     """
@@ -42,20 +61,23 @@ async def ensure_joined(bot: Bot, user_id: int) -> tuple[bool, list[str]]:
         if cached is not None and cached[1] > now:
             joined = cached[0]
         else:
-            try:
-                member = await bot.get_chat_member(chat_id=chat, user_id=user_id)
-                joined = member.status not in ("left", "kicked")
-            except Exception:
-                logger.warning(
-                    "get_chat_member failed for chat=%s user=%d — treating as joined",
-                    chat,
-                    user_id,
-                )
-                joined = True  # fail-open: never block on API failure
+            joined = await _check_member(bot, chat, user_id)
+            if joined is None:
+                # Double-check: transient API errors must not grant access.
+                await asyncio.sleep(_RETRY_DELAY_S)
+                rechecked = await _check_member(bot, chat, user_id)
+                if rechecked is None:
+                    logger.warning(
+                        "membership double-check failed chat=%s user=%d — denying",
+                        chat,
+                        user_id,
+                    )
+                    joined = False  # fail-closed: unverified = not joined
+                else:
+                    joined = rechecked
 
-            # Cache POSITIVE results only — a user who just joined should not
-            # be stuck behind a stale "not joined" entry for 5 minutes when
-            # they re-open the deep link (instead of tapping the button).
+            # Cache POSITIVE results only — negatives are always re-checked
+            # when the user re-opens the link after joining.
             if joined:
                 _join_cache[cache_key] = (True, now + _CACHE_TTL)
 
