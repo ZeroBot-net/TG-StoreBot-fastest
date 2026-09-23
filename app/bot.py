@@ -110,6 +110,16 @@ async def _expiry_scheduler() -> None:
 
 
 async def main() -> None:
+    # Apply TZ first — logging + all naive datetimes display in this zone.
+    # (Storage stays UTC: SQLite datetime('now') is always UTC.)
+    if settings.tz:
+        import os
+        import time
+
+        os.environ["TZ"] = settings.tz
+        if hasattr(time, "tzset"):
+            time.tzset()
+
     logging.basicConfig(
         level=getattr(logging, settings.log_level.upper(), logging.INFO),
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",

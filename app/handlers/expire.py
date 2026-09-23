@@ -6,7 +6,8 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from app.bot import db, router
-from app.util import format_duration, iso_in, parse_duration
+from app.config import settings
+from app.util import format_duration, format_expiry_display, iso_in, parse_duration
 
 
 @router.message(Command("expire"))
@@ -52,8 +53,9 @@ async def handle_expire(message: Message) -> None:
 
     expires_at = iso_in(seconds)
     if db.set_expire(code, user_id, expires_at):
+        shown = format_expiry_display(expires_at, settings.tz)
         await message.answer(
-            f"⏳ Expires at <code>{expires_at}</code> UTC "
+            f"⏳ Expires at <code>{shown}</code> "
             f"(in {format_duration(seconds)})",
             parse_mode="HTML",
         )

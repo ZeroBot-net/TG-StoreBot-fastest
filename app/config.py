@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # Empty = console-only logging; otherwise also append logs to this file.
     log_file: str = "./data/bot.log"
     latency_log_file: str = "./data/latency.log"
+    # Display/logging timezone — timestamps shown to users + log lines use
+    # this zone. Storage stays UTC (SQLite datetime('now') comparisons).
+    tz: str = "Asia/Dhaka"
 
     # --- new fields ---
     backup_channel_ids: Annotated[list[int], NoDecode] = []

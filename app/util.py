@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 _UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
 _DURATION_RE = re.compile(r"(\d+(?:\.\d+)?)([smhdw])")
@@ -52,6 +53,24 @@ def format_duration(seconds: float) -> str:
 
 
 def iso_in(seconds: float) -> str:
-    """Return a UTC timestamp string ``%Y-%m-%d %H:%M:%S`` = now + *seconds*."""
+    """Return a UTC timestamp string ``%Y-%m-%d %H:%M:%S`` = now + *seconds*.
+
+    Storage format — MUST stay UTC (SQLite ``datetime('now')`` is UTC).
+    """
     target = datetime.now(UTC).timestamp() + seconds
     return datetime.fromtimestamp(target, tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_expiry_display(utc_ts: str, tz_name: str = "UTC") -> str:
+    """Render a stored UTC timestamp for humans in *tz_name*.
+
+    Falls back to the raw UTC string if the timezone is unknown.
+    Example: ``format_expiry_display("2026-01-01 00:00:00", "Asia/Dhaka")``
+    → ``"2026-01-01 06:00:00 GMT+6"``.
+    """
+    try:
+        naive = datetime.strptime(utc_ts, "%Y-%m-%d %H:%M:%S")
+        local = naive.replace(tzinfo=UTC).astimezone(ZoneInfo(tz_name))
+        return f"{local.strftime('%Y-%m-%d %H:%M:%S')} {local.tzname() or tz_name}"
+    except (ValueError, ZoneInfoNotFoundError):
+        return f"{utc_ts} UTC"

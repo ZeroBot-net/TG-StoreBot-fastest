@@ -96,3 +96,25 @@ class TestIsoIn:
         now = datetime.now(UTC)
         diff = (parsed - now).total_seconds()
         assert 3595 <= diff <= 3610
+
+
+class TestFormatExpiryDisplay:
+    """format_expiry_display — render stored UTC timestamps in TZ."""
+
+    def test_dhaka_is_plus_six(self) -> None:
+        from app.util import format_expiry_display
+
+        result = format_expiry_display("2026-01-01 00:00:00", "Asia/Dhaka")
+        assert result.startswith("2026-01-01 06:00:00")
+
+    def test_unknown_zone_falls_back_to_utc(self) -> None:
+        from app.util import format_expiry_display
+
+        result = format_expiry_display("2026-01-01 00:00:00", "Not/AZone")
+        assert result == "2026-01-01 00:00:00 UTC"
+
+    def test_invalid_timestamp_falls_back(self) -> None:
+        from app.util import format_expiry_display
+
+        result = format_expiry_display("garbage", "Asia/Dhaka")
+        assert result == "garbage UTC"

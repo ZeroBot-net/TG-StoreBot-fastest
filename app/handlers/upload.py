@@ -12,7 +12,7 @@ from aiogram.types import Message
 
 from app.bot import db, get_bot_username, router
 from app.config import settings
-from app.util import iso_in, parse_duration
+from app.util import format_expiry_display, iso_in, parse_duration
 
 logger = logging.getLogger(__name__)
 
@@ -231,7 +231,8 @@ async def handle_media(message: Message) -> None:
     ttl_line = ""
     if expires_at:
         suffix = "" if explicit_ttl else " (default)"
-        ttl_line = f"\n⏳ Expires: <code>{expires_at}</code> UTC{suffix}"
+        shown = format_expiry_display(expires_at, settings.tz)
+        ttl_line = f"\n⏳ Expires: <code>{shown}</code>{suffix}"
 
     await message.answer(
         "✅ <b>Stored!</b>\n\n"

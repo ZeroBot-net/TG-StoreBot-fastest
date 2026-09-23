@@ -76,6 +76,7 @@ Send any media to the bot → it forwards it to a private channel → you get a 
 | `DB_PATH` | No | `./data/store.db` | SQLite database path — **same path = shared DB across bot instances** (same machine/volume) |
 | `LOG_LEVEL` | No | `INFO` | Python log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `LOG_FILE` | No | `./data/bot.log` | Also append logs to this file (`""` = console only) |
+| `TZ` | No | `Asia/Dhaka` | Display + logging timezone (expiry times shown to users; storage stays UTC) |
 | `LATENCY_LOG_FILE` | No | `./data/latency.log` | CSV file for latency records |
 
 ### Multi-bot setup
