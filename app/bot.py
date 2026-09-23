@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import sys
 
@@ -79,6 +80,29 @@ def _register_handlers() -> None:
         logger.warning("Handler modules not available — bot will start without command handlers")
 
 
+async def _expiry_scheduler() -> None:
+    """Background loop that claims and deletes expired messages."""
+    while True:
+        await asyncio.sleep(settings.expiry_scan_interval_s)
+        try:
+            # Sync SQLite work off the event loop — never block handlers.
+            claimed = await asyncio.to_thread(db.claim_expired)
+            for code, channels in claimed:
+                for ch, mid in channels:
+                    try:
+                        await _bot.delete_message(ch, mid)  # type: ignore[union-attr]
+                    except Exception:
+                        logger.warning(
+                            "failed to delete expired msg ch=%s mid=%s code=%s",
+                            ch,
+                            mid,
+                            code,
+                        )
+                logger.info("expired %s (%d channels)", code, len(channels))
+        except Exception:
+            logger.exception("expiry scheduler error")
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -98,10 +122,19 @@ async def main() -> None:
 
     _dp.startup.register(_on_startup)
 
+    sched_task = asyncio.create_task(_expiry_scheduler())
     try:
-        await _dp.start_polling(_bot, allowed_updates=["message"])
+        await _dp.start_polling(
+            _bot, allowed_updates=["message", "callback_query"]
+        )
     finally:
+        sched_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await sched_task
         db.close()
+        from app.latency import close_handle
+
+        close_handle()
         await _session.close()
 
 
