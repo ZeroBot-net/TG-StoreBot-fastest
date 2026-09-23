@@ -47,7 +47,9 @@ class Settings(BaseSettings):
     # --- new fields ---
     backup_channel_ids: Annotated[list[int], NoDecode] = []
     force_join_chats: Annotated[list[str], NoDecode] = []
-    expiry_scan_interval_s: int = 30
+    # TTL scanner interval in MINUTES: 0 = auto-expire disabled entirely,
+    # 1 = sweep every minute, 30 = sweep every 30 minutes.
+    expiry_scan_interval_m: int = 30
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

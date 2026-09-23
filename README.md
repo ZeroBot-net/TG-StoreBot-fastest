@@ -71,7 +71,7 @@ Send any media to the bot → it forwards it to a private channel → you get a 
 | `ADMIN_IDS` | **Yes** | — | Comma-separated Telegram user IDs for admin access (bypass force-join, `/stats`) |
 | `BACKUP_CHANNEL_IDS` | No | *(none)* | Comma-separated backup channel IDs — same file fanned out to all (redundancy) |
 | `FORCE_JOIN_CHATS` | No | *(none)* | Comma-separated chats users must join first (`@name` or `-100…`) |
-| `EXPIRY_SCAN_INTERVAL_S` | No | `30` | Background TTL scanner interval (seconds) |
+| `EXPIRY_SCAN_INTERVAL_M` | No | `30` | TTL scanner interval in **minutes** — `0` = auto-expire OFF, `1` = every 1 min, `30` = every 30 min |
 | `DB_PATH` | No | `./data/store.db` | SQLite database path — **same path = shared DB across bot instances** (same machine/volume) |
 | `LOG_LEVEL` | No | `INFO` | Python log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `LATENCY_LOG_FILE` | No | `./data/latency.log` | CSV file for latency records |

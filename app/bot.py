@@ -82,8 +82,9 @@ def _register_handlers() -> None:
 
 async def _expiry_scheduler() -> None:
     """Background loop that claims and deletes expired messages."""
+    interval_s = settings.expiry_scan_interval_m * 60
     while True:
-        await asyncio.sleep(settings.expiry_scan_interval_s)
+        await asyncio.sleep(interval_s)
         try:
             # Sync SQLite work off the event loop — never block handlers.
             claimed = await asyncio.to_thread(db.claim_expired)
@@ -122,15 +123,23 @@ async def main() -> None:
 
     _dp.startup.register(_on_startup)
 
-    sched_task = asyncio.create_task(_expiry_scheduler())
+    sched_task: asyncio.Task[None] | None = None
+    if settings.expiry_scan_interval_m > 0:
+        sched_task = asyncio.create_task(_expiry_scheduler())
+    else:
+        logger.info(
+            "EXPIRY_SCAN_INTERVAL_M=0 — auto-expire disabled "
+            "(files will never be auto-removed)"
+        )
     try:
         await _dp.start_polling(
             _bot, allowed_updates=["message", "callback_query"]
         )
     finally:
-        sched_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await sched_task
+        if sched_task is not None:
+            sched_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await sched_task
         db.close()
         from app.latency import close_handle
 
