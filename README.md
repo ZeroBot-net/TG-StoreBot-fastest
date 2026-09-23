@@ -16,7 +16,7 @@ Send any media to the bot → it forwards it to a private channel → you get a 
 - **Multi-bot, one DB** — run N bot instances (different `BOT_TOKEN`s) against the same `DB_PATH`; SQLite WAL + `PRAGMA data_version` keeps every process's cache in sync
 - **Multi-channel backup** — upload fans out to `CHANNEL_ID` + every `BACKUP_CHANNEL_IDS`; delivery falls back channel-by-channel if the primary copy is deleted
 - **TTL auto-expire** — set at upload with a `/ttl 2h` caption prefix or later via `/expire <code> <dur|off>`; a background scanner deletes the message from **all** storage channels + the DB row. (Anything a user already forwarded/saved stays with them.)
-- **Force-join gate** — `FORCE_JOIN_CHATS` must be joined before delivery; admins bypass, API errors fail open (never block delivery on a check failure), retry via an "✅ I joined" button
+- **Force-join gate** — `FORCE_JOIN_CHATS` must be joined before delivery — **no verified join, no file**. API errors are **double-checked** (one immediate retry); if still unverifiable the user is denied with join links + an "✅ I joined" button that re-verifies on tap. Re-opening the deep link also re-checks (negatives are never cached). Admins bypass.
 - **User file management** — `/list`, `/delete`
 - **Admin stats** — `/stats`
 - **Latency logging** — every request logged to CSV for analysis
