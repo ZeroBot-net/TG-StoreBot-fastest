@@ -19,7 +19,7 @@ async def handle_stats(message: Message) -> None:
         return
 
     s = db.stats()
-    total_mb = round(s.get("total_bytes", 0) / (1024 * 1024), 2)
+    total_mb = round(s["total_bytes"] / (1024 * 1024), 2)
 
     await message.answer(
         "📊 <b>Bot Statistics</b>\n\n"

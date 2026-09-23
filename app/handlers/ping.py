@@ -12,7 +12,13 @@ from app.bot import router
 
 @router.message(Command("ping"))
 async def handle_ping(message: Message) -> None:
-    """Reply with local processing time in ms."""
+    """Reply with a real DB round-trip time (the actual hot-path work)."""
     t0 = time.monotonic()
-    ms = round((time.monotonic() - t0) * 1000, 1)
-    await message.answer(f"🏓 Pong — handled in {ms:.1f}ms", parse_mode="HTML")
+    from app.bot import db
+
+    db.has_code("0000000000")  # cheapest real hot-path operation
+    lookup_ms = (time.monotonic() - t0) * 1000
+    await message.answer(
+        f"🏓 Pong — cache lookup {lookup_ms:.2f}ms",
+        parse_mode="HTML",
+    )

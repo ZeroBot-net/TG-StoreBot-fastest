@@ -5,19 +5,30 @@ from __future__ import annotations
 import logging
 import time
 
-from aiogram import F
-from aiogram.types import Message
+from aiogram.filters import CommandStart
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from app.bot import db, router
-from app.config import settings
+from app.deliver import deliver_file
+from app.forcejoin import ensure_joined
 from app.latency import log_latency
 
 logger = logging.getLogger(__name__)
 
 
-@router.message(F.text.startswith("/start"))
+@router.message(CommandStart(deep_link=True))
+async def handle_start_with_payload(message: Message) -> None:
+    """Deliver file from a deep-link payload: /start <10-digit code>."""
+    await _handle_start(message)
+
+
+@router.message(CommandStart())
 async def handle_start(message: Message) -> None:
-    """Deliver file on deep link, or show welcome when no payload."""
+    """Welcome / delivery entry point."""
+    await _handle_start(message)
+
+
+async def _handle_start(message: Message) -> None:
     t0 = time.monotonic()
     user_id = message.from_user.id if message.from_user else 0
 
@@ -40,25 +51,49 @@ async def handle_start(message: Message) -> None:
         log_latency(code, t0, user_id, success=False)
         return
 
-    cached = db.get(code)
-    if cached is None:
+    if not db.has_code(code):
         await message.answer("❌ File not found.", parse_mode="HTML")
         log_latency(code, t0, user_id, success=False)
         return
 
-    # No awaits between lookup and copy — keeps latency minimal.
-    try:
-        await message.bot.copy_message(
-            chat_id=user_id,
-            from_chat_id=settings.channel_id,
-            message_id=cached.message_id,
+    # --- Force-join gate (admins bypass, API errors fail open) -------------
+    bot = message.bot
+    ok, urls = await ensure_joined(bot, user_id)
+    if not ok:
+        # Buttons: join links two-per-row, then a single retry button.
+        rows: list[list[InlineKeyboardButton]] = [
+            [
+                InlineKeyboardButton(text="📢 Join", url=u)
+                for u in urls[i : i + 2]
+            ]
+            for i in range(0, len(urls), 2)
+        ]
+        rows.append(
+            [InlineKeyboardButton(text="✅ I joined", callback_data=f"join:{code}")]
         )
-    except Exception:
-        logger.exception("copy_message failed for code=%s user=%d", code, user_id)
-        await message.answer("⚠️ Delivery failed. Try again later.", parse_mode="HTML")
+        keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
+        links = "\n".join(f"• <a href=\"{u}\">{u}</a>" for u in urls)
+        await message.answer(
+            "🔒 <b>Join required</b>\n\n"
+            f"{links}\n\n"
+            "Join kore niche <b>I joined</b> e tap koro.",
+            parse_mode="HTML",
+            reply_markup=keyboard,
+            disable_web_page_preview=True,
+        )
         log_latency(code, t0, user_id, success=False)
         return
 
-    latency_ms = round((time.monotonic() - t0) * 1000, 2)
-    logger.info("delivered code=%s user=%d in %.1fms", code, user_id, latency_ms)
-    log_latency(code, t0, user_id, success=True)
+    # --- Deliver with multi-channel fallback (backup channels) -----------------
+    status = await deliver_file(bot, user_id, code)
+
+    if status == "ok":
+        latency_ms = round((time.monotonic() - t0) * 1000, 2)
+        logger.info("delivered code=%s user=%d in %.1fms", code, user_id, latency_ms)
+        log_latency(code, t0, user_id, success=True)
+    elif status == "not_found":
+        await message.answer("❌ File not found.", parse_mode="HTML")
+        log_latency(code, t0, user_id, success=False)
+    else:
+        await message.answer("⚠️ Delivery failed. Try again later.", parse_mode="HTML")
+        log_latency(code, t0, user_id, success=False)
