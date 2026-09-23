@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     admin_ids: Annotated[list[int], NoDecode]
     db_path: str = "./data/store.db"
     log_level: str = "INFO"
+    # Empty = console-only logging; otherwise also append logs to this file.
+    log_file: str = "./data/bot.log"
     latency_log_file: str = "./data/latency.log"
 
     # --- new fields ---

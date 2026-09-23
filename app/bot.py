@@ -115,6 +115,24 @@ async def main() -> None:
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
     )
 
+    # Optional file logging (LOG_FILE= disables with an empty value).
+    if settings.log_file:
+        try:
+            from pathlib import Path
+
+            log_path = Path(settings.log_file)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            fh = logging.FileHandler(log_path, encoding="utf-8")
+            fh.setFormatter(
+                logging.Formatter(
+                    "%(asctime)s %(levelname)-8s %(name)s — %(message)s"
+                )
+            )
+            logging.getLogger().addHandler(fh)
+            logger.info("logging to file: %s", log_path)
+        except OSError:
+            logger.warning("could not open LOG_FILE=%s", settings.log_file)
+
     create_bot()
     assert _dp is not None and _bot is not None and _session is not None
 

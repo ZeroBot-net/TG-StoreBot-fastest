@@ -74,6 +74,7 @@ Send any media to the bot → it forwards it to a private channel → you get a 
 | `EXPIRY_SCAN_INTERVAL_M` | No | `30` | TTL scanner interval in **minutes** — `0` = auto-expire OFF, `1` = every 1 min, `30` = every 30 min |
 | `DB_PATH` | No | `./data/store.db` | SQLite database path — **same path = shared DB across bot instances** (same machine/volume) |
 | `LOG_LEVEL` | No | `INFO` | Python log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `LOG_FILE` | No | `./data/bot.log` | Also append logs to this file (`""` = console only) |
 | `LATENCY_LOG_FILE` | No | `./data/latency.log` | CSV file for latency records |
 
 ### Multi-bot setup
