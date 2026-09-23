@@ -152,6 +152,29 @@ class TestParseTtlCaption:
         assert err is not None
 
 
+class TestDefaultExpiry:
+    """DEFAULT_TTL_DAYS: 7 (default) = 1 week, 0 = never."""
+
+    def test_default_7_days(self) -> None:
+        from datetime import UTC, datetime
+
+        from app.handlers.upload import default_expiry
+
+        result = default_expiry()
+        assert result is not None
+        parsed = datetime.strptime(result, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
+        delta = (parsed - datetime.now(UTC)).total_seconds()
+        assert 7 * 86400 - 120 <= delta <= 7 * 86400 + 120  # ~7 days ±2min
+
+    def test_zero_days_never_expires(self, monkeypatch) -> None:
+        import app.config as cfg
+
+        monkeypatch.setattr(cfg.settings, "default_ttl_days", 0)
+        from app.handlers.upload import default_expiry
+
+        assert default_expiry() is None
+
+
 # ---------------------------------------------------------------------------
 # Handler integration — exercise the start handler function directly.
 # ---------------------------------------------------------------------------

@@ -15,7 +15,7 @@ Send any media to the bot → it forwards it to a private channel → you get a 
 - **Instant retrieval** — `copyMessage` from storage channel, no re-upload
 - **Multi-bot, one DB** — run N bot instances (different `BOT_TOKEN`s) against the same `DB_PATH`; SQLite WAL + `PRAGMA data_version` keeps every process's cache in sync
 - **Multi-channel backup** — upload fans out to `CHANNEL_ID` + every `BACKUP_CHANNEL_IDS`; delivery falls back channel-by-channel if the primary copy is deleted
-- **TTL auto-expire** — set at upload with a `/ttl 2h` caption prefix or later via `/expire <code> <dur|off>`; a background scanner deletes the message from **all** storage channels + the DB row. (Anything a user already forwarded/saved stays with them.)
+- **TTL auto-expire** — default **7 days (1 week)** via `DEFAULT_TTL_DAYS`; override at upload with a `/ttl 2h` caption prefix or later via `/expire <code> <dur|off>` (`off` = keep forever). A background scanner (interval in minutes, `0` = disabled) deletes the message from **all** storage channels + the DB row. (Anything a user already forwarded/saved stays with them.)
 - **Force-join gate** — `FORCE_JOIN_CHATS` must be joined before delivery — **no verified join, no file**. API errors are **double-checked** (one immediate retry); if still unverifiable the user is denied with join links + an "✅ I joined" button that re-verifies on tap. Re-opening the deep link also re-checks (negatives are never cached). Admins bypass.
 - **User file management** — `/list`, `/delete`
 - **Admin stats** — `/stats`
@@ -72,6 +72,7 @@ Send any media to the bot → it forwards it to a private channel → you get a 
 | `BACKUP_CHANNEL_IDS` | No | *(none)* | Comma-separated backup channel IDs — same file fanned out to all (redundancy) |
 | `FORCE_JOIN_CHATS` | No | *(none)* | Comma-separated chats users must join first (`@name` or `-100…`) |
 | `EXPIRY_SCAN_INTERVAL_M` | No | `30` | TTL scanner interval in **minutes** — `0` = auto-expire OFF, `1` = every 1 min, `30` = every 30 min |
+| `DEFAULT_TTL_DAYS` | No | `7` | Default file TTL in **days** (7 = 1 week) when the caption has no `/ttl` — `0` = never expire; override per file with `/ttl` caption or `/expire <code> off` |
 | `DB_PATH` | No | `./data/store.db` | SQLite database path — **same path = shared DB across bot instances** (same machine/volume) |
 | `LOG_LEVEL` | No | `INFO` | Python log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `LOG_FILE` | No | `./data/bot.log` | Also append logs to this file (`""` = console only) |

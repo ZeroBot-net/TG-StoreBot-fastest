@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # TTL scanner interval in MINUTES: 0 = auto-expire disabled entirely,
     # 1 = sweep every minute, 30 = sweep every 30 minutes.
     expiry_scan_interval_m: int = 30
+    # Default file TTL in DAYS applied on upload when the caption has no
+    # explicit /ttl: 7 = 1 week (default), 0 = files never auto-expire.
+    default_ttl_days: int = 7
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

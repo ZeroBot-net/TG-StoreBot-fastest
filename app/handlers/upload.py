@@ -91,6 +91,16 @@ def _generate_code() -> str:
     return "".join(secrets.choice("0123456789") for _ in range(_CODE_LENGTH))
 
 
+def default_expiry() -> str | None:
+    """Default TTL applied when the caption carries no explicit /ttl.
+
+    ``DEFAULT_TTL_DAYS=7`` (default) → expires in 1 week;
+    ``0`` → never expires.
+    """
+    days = settings.default_ttl_days
+    return iso_in(days * 86400) if days > 0 else None
+
+
 def _parse_ttl_caption(caption: str | None) -> tuple[str | None, str | None, str | None]:
     """Split a ``/ttl <duration>`` caption prefix.
 
@@ -143,6 +153,10 @@ async def handle_media(message: Message) -> None:
             "as the start of your caption.",
             parse_mode="HTML",
         )
+    explicit_ttl = expires_at is not None
+    if expires_at is None:
+        # No valid /ttl in caption → apply DEFAULT_TTL_DAYS (7 = 1 week).
+        expires_at = default_expiry()
 
     # --- Fan out to primary + backup channels (redundancy) -------------
     # copy_message (not forward_message): no "Forwarded from" header in the
@@ -214,9 +228,10 @@ async def handle_media(message: Message) -> None:
     username = await get_bot_username() or "your_bot"
     deep_link = f"https://t.me/{username}?start={code}"
 
-    ttl_line = (
-        f"\n⏳ Expires: <code>{expires_at}</code> UTC" if expires_at else ""
-    )
+    ttl_line = ""
+    if expires_at:
+        suffix = "" if explicit_ttl else " (default)"
+        ttl_line = f"\n⏳ Expires: <code>{expires_at}</code> UTC{suffix}"
 
     await message.answer(
         "✅ <b>Stored!</b>\n\n"
