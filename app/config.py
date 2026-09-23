@@ -2,10 +2,35 @@
 
 from __future__ import annotations
 
+import json as _json
 from typing import Annotated
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode
+
+
+def _parse_int_list(v: str | list[int]) -> list[int]:
+    """Accept comma-separated, JSON array, or real list — strip to int."""
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            return [int(x) for x in _json.loads(s)]
+        return [int(x.strip()) for x in s.split(",") if x.strip()]
+    return v
+
+
+def _parse_str_list(v: str | list[str]) -> list[str]:
+    """Accept comma-separated, JSON array, or real list — keep stripped strings."""
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            return [x.strip() for x in _json.loads(s) if x.strip()]
+        return [x.strip() for x in s.split(",") if x.strip()]
+    return v
 
 
 class Settings(BaseSettings):
@@ -19,20 +44,43 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     latency_log_file: str = "./data/latency.log"
 
+    # --- new fields ---
+    backup_channel_ids: Annotated[list[int], NoDecode] = []
+    force_join_chats: Annotated[list[str], NoDecode] = []
+    expiry_scan_interval_s: int = 30
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    # -- validators --------------------------------------------------------
 
     @field_validator("admin_ids", mode="before")
     @classmethod
     def _parse_admin_ids(cls, v: str | list[int]) -> list[int]:
         """Accept comma-separated ("1,2,3"), JSON ("[1,2,3]"), or a real list."""
-        if isinstance(v, str):
-            s = v.strip()
-            if s.startswith("["):
-                import json
+        return _parse_int_list(v)
 
-                return [int(x) for x in json.loads(s)]
-            return [int(x.strip()) for x in s.split(",") if x.strip()]
-        return v
+    @field_validator("backup_channel_ids", mode="before")
+    @classmethod
+    def _parse_backup_channel_ids(cls, v: str | list[int]) -> list[int]:
+        return _parse_int_list(v)
+
+    @field_validator("force_join_chats", mode="before")
+    @classmethod
+    def _parse_force_join_chats(cls, v: str | list[str]) -> list[str]:
+        return _parse_str_list(v)
+
+    # -- properties --------------------------------------------------------
+
+    @property
+    def storage_channel_ids(self) -> list[int]:
+        """Primary + backup channel ids, deduped preserving order."""
+        seen: set[int] = set()
+        out: list[int] = []
+        for cid in (self.channel_id, *self.backup_channel_ids):
+            if cid not in seen:
+                seen.add(cid)
+                out.append(cid)
+        return out
 
 
 settings = Settings()
