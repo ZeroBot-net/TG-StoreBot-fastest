@@ -110,6 +110,49 @@ class TestExtractFileId:
 
 
 # ---------------------------------------------------------------------------
+# Upload helpers — TTL caption parsing.
+# ---------------------------------------------------------------------------
+
+class TestParseTtlCaption:
+    def test_no_caption(self) -> None:
+        from app.handlers.upload import _parse_ttl_caption
+
+        expires, cap, err = _parse_ttl_caption(None)
+        assert expires is None and cap is None and err is None
+
+    def test_plain_caption_untouched(self) -> None:
+        from app.handlers.upload import _parse_ttl_caption
+
+        expires, cap, err = _parse_ttl_caption("hello world")
+        assert expires is None and cap == "hello world" and err is None
+
+    def test_ttl_with_caption_remainder(self) -> None:
+        from app.handlers.upload import _parse_ttl_caption
+
+        expires, cap, err = _parse_ttl_caption("/ttl 2h my file")
+        assert err is None and expires is not None
+        assert cap == "my file"
+
+    def test_ttl_only_duration(self) -> None:
+        from app.handlers.upload import _parse_ttl_caption
+
+        expires, cap, err = _parse_ttl_caption("/ttl 30m")
+        assert err is None and expires is not None and cap is None
+
+    def test_ttl_invalid_duration(self) -> None:
+        from app.handlers.upload import _parse_ttl_caption
+
+        _, _, err = _parse_ttl_caption("/ttl banana")
+        assert err is not None
+
+    def test_ttl_missing_duration(self) -> None:
+        from app.handlers.upload import _parse_ttl_caption
+
+        _, _, err = _parse_ttl_caption("/ttl")
+        assert err is not None
+
+
+# ---------------------------------------------------------------------------
 # Handler integration — exercise the start handler function directly.
 # ---------------------------------------------------------------------------
 
@@ -125,7 +168,7 @@ class TestStartHandler:
         except Exception:
             pytest.skip("app.handlers.start not importable")
 
-    async def test_valid_code_calls_copy_message(self) -> None:
+    async def test_valid_code_calls_deliver(self) -> None:
         handle_start = self._get_handle_start()
         if handle_start is None:
             return
@@ -134,26 +177,43 @@ class TestStartHandler:
         msg.text = "/start 0000000042"
         msg.from_user = MagicMock(id=42)
         msg.answer = AsyncMock()
-
-        # Patch db.get to return a cached file
-        fake_cached = MagicMock()
-        fake_cached.message_id = 99
+        msg.bot = MagicMock()
 
         with patch("app.handlers.start.db") as mock_db, \
-             patch("app.handlers.start.settings") as mock_settings, \
-             patch("app.handlers.start.log_latency"):
-            mock_db.get.return_value = fake_cached
-            mock_settings.channel_id = -1001
-            msg.bot = MagicMock()
-            msg.bot.copy_message = AsyncMock()
+             patch("app.handlers.start.log_latency"), \
+             patch("app.handlers.start.ensure_joined", return_value=(True, [])) as mock_join, \
+             patch("app.handlers.start.deliver_file", return_value="ok") as mock_deliver:
+            mock_db.get.return_value = MagicMock()  # code exists
 
             await handle_start(msg)
 
-            msg.bot.copy_message.assert_awaited_once_with(
-                chat_id=42,
-                from_chat_id=-1001,
-                message_id=99,
-            )
+            mock_join.assert_awaited_once()
+            mock_deliver.assert_awaited_once_with(msg.bot, 42, "0000000042")
+            msg.answer.assert_not_awaited()  # delivered silently
+
+    async def test_force_join_blocks_delivery(self) -> None:
+        handle_start = self._get_handle_start()
+        if handle_start is None:
+            return
+
+        msg = MagicMock()
+        msg.text = "/start 0000000042"
+        msg.from_user = MagicMock(id=42)
+        msg.answer = AsyncMock()
+        msg.bot = MagicMock()
+
+        join_ret = (False, ["https://t.me/chan"])
+        with patch("app.handlers.start.db") as mock_db, \
+             patch("app.handlers.start.log_latency"), \
+             patch("app.handlers.start.ensure_joined", return_value=join_ret), \
+             patch("app.handlers.start.deliver_file") as mock_deliver:
+            mock_db.get.return_value = MagicMock()
+
+            await handle_start(msg)
+
+            mock_deliver.assert_not_awaited()  # gated — no delivery yet
+            msg.answer.assert_awaited_once()
+            assert "Join" in msg.answer.call_args[0][0]
 
     async def test_invalid_code_calls_answer(self) -> None:
         handle_start = self._get_handle_start()
