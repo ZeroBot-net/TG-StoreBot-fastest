@@ -43,3 +43,15 @@ def log_latency(code: str, t0: float, user_id: int, success: bool) -> None:
         fh.flush()
     except Exception:
         pass
+
+
+def close_handle() -> None:
+    """Flush and close the latency CSV handle (shutdown hook)."""
+    global _handle  # noqa: PLW0603
+    try:
+        if _handle is not None and not _handle.closed:
+            _handle.flush()
+            _handle.close()
+    except Exception:
+        pass
+    _handle = None
