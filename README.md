@@ -27,7 +27,7 @@ Send any media to the bot → it forwards it to a private channel → you get a 
 ```
 ┌──────────┐      send media        ┌───────────────────┐
 │   User   │ ─────────────────────▶ │  Bot (aiogram ×N) │  ← N processes, same DB
-└──────────┘                       └────────┬──────────┘
+└──────────┘                        └────────┬──────────┘
                                             │ forward (fan-out)
                      ┌──────────────────────┼──────────────────────┐
                      ▼                      ▼                      ▼

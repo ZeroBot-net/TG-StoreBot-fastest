@@ -84,7 +84,7 @@ async def _handle_start(message: Message) -> None:
         log_latency(code, t0, user_id, success=False)
         return
 
-    # --- Deliver with multi-channel fallback (backup channels) -----------------
+    # --- Deliver with multi-channel fallback (backup channels) -------------
     status = await deliver_file(bot, user_id, code)
 
     if status == "ok":

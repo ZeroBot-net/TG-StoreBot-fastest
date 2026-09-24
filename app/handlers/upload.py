@@ -158,7 +158,7 @@ async def handle_media(message: Message) -> None:
         # No valid /ttl in caption → apply DEFAULT_TTL_DAYS (7 = 1 week).
         expires_at = default_expiry()
 
-    # --- Fan out to primary + backup channels (redundancy) -------------
+    # --- Fan out to primary + backup channels (redundancy) -----------------
     # copy_message (not forward_message): no "Forwarded from" header in the
     # storage channels — keeps the uploader anonymous.
     channels = settings.storage_channel_ids
@@ -221,7 +221,7 @@ async def handle_media(message: Message) -> None:
         await message.answer("⚠️ Storage error — try again.", parse_mode="HTML")
         return
 
-    # Register backup channel copies for backup fallback delivery.
+    # Register backup channel copies for fallback delivery.
     for ch, mid in stored[1:]:
         db.add_channel(code, ch, mid)
 
