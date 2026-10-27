@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![aiogram](https://img.shields.io/badge/aiogram-3-00aced?style=flat-square&logo=telegram)](https://docs.aiogram.dev/)
-[![Website](https://img.shields.io/badge/ZeroBot.net-bot%20hosting-blue?style=flat-square)](https://zero-bot.net)
+[![Website](https://img.shields.io/badge/Zero--Bot.net-bot%20hosting-blue?style=flat-square)](https://zero-bot.net)
 
 Fastest Telegram file store bot — private channel as storage, 10-digit deep links, sub-200ms end-to-end delivery.
 
@@ -145,9 +145,9 @@ uv run python scripts/benchmark.py
 
 ## Hosting
 
-Run this bot 24/7 on a [ZeroBot.net](https://zero-bot.net) bot server (Python, Node.js, Go and PHP supported), or on any VPS.
+Run this bot 24/7 on a [Zero-Bot.net](https://zero-bot.net) bot server (Python, Node.js, Go and PHP supported), or on any VPS.
 
-## More from ZeroBot.net
+## More from Zero-Bot.net
 
 - [tg-bot-api](https://github.com/ZeroBot-net/tg-bot-api): Telegram Bot API library for Node.js (`npm i @zero-bot.net/tg-bot-api`)
-- [ZeroBot.net](https://zero-bot.net): bot hosting and bot-building platform
+- [Zero-Bot.net](https://zero-bot.net): bot hosting and bot-building platform
